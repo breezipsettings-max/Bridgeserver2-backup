@@ -1,47 +1,29 @@
 const WebSocket = require('ws');
 const http = require('http');
 
-const port = process.env.PORT || 3000;
-
-// HTTP Health Check for Render
+// Create a simple server for Render health checks
 const server = http.createServer((req, res) => {
     res.writeHead(200);
-    res.end("Universal Bridge Chat: Online");
+    res.end("Bridge is Active");
 });
 
 const wss = new WebSocket.Server({ server });
 
 wss.on('connection', (ws) => {
-    console.log(`Player Connected. Total: ${wss.clients.size}`);
+    console.log("A user connected to the Sync Bridge.");
 
-    ws.on('message', (data) => {
-        const message = data.toString();
-
+    ws.on('message', (message) => {
+        // Broadcast logic: Sends message to EVERYONE except the sender
         wss.clients.forEach((client) => {
-            // Relay to everyone except the person who sent it
             if (client !== ws && client.readyState === WebSocket.OPEN) {
-                client.send(message);
+                client.send(message.toString());
             }
         });
     });
 
-    // Error handling to prevent server crashes
-    ws.on('error', (err) => console.error("Socket Error:", err));
-
-    ws.on('close', () => {
-        console.log(`Player Disconnected. Total: ${wss.clients.size}`);
-    });
+    ws.on('close', () => console.log("User disconnected."));
 });
 
-// Keep-alive: Pings clients every 30 seconds to keep the connection active
-setInterval(() => {
-    wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.ping();
-        }
-    });
-}, 30000);
-
-server.listen(port, () => {
-    console.log(`Bridge listening on port ${port}`);
+server.listen(process.env.PORT || 3000, () => {
+    console.log("Relay Bridge Running...");
 });
