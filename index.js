@@ -1,51 +1,29 @@
-// Netlify does not support 'ws' library. 
-// This uses an HTTP POST relay instead.
-// You must connect a database to 'MESSAGES' to actually sync across servers.
+const WebSocket = require('ws');
+const http = require('http');
 
-exports.handler = async (event, context) => {
-    // Headers to allow Roblox to communicate
-    const headers = {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "Content-Type",
-        "Content-Type": "application/json"
-    };
+// Create a simple server for Render health checks
+const server = http.createServer((req, res) => {
+    res.writeHead(200);
+    res.end("Bridge is Active");
+});
 
-    // Health Check (Prevents the 404)
-    if (event.httpMethod === "GET") {
-        return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({ status: "Bridge is Active", mode: "Serverless" })
-        };
-    }
+const wss = new WebSocket.Server({ server });
 
-    // Receiving a message from Roblox
-    if (event.httpMethod === "POST") {
-        try {
-            const payload = JSON.parse(event.body);
-            
-            // In a real Netlify bridge, you would save 'payload' to a Database here.
-            // Because there is no persistent memory, we just echo it back.
-            
-            console.log("Message Received: ", payload);
+wss.on('connection', (ws) => {
+    console.log("A user connected to the Sync Bridge.");
 
-            return {
-                statusCode: 200,
-                headers,
-                body: JSON.stringify({ message: "Sent to Relay", data: payload })
-            };
-        } catch (err) {
-            return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({ error: "Invalid JSON" })
-            };
-        }
-    }
+    ws.on('message', (message) => {
+        // Broadcast logic: Sends message to EVERYONE except the sender
+        wss.clients.forEach((client) => {
+            if (client !== ws && client.readyState === WebSocket.OPEN) {
+                client.send(message.toString());
+            }
+        });
+    });
 
-    return {
-        statusCode: 405,
-        headers,
-        body: "Method Not Allowed"
-    };
-};
+    ws.on('close', () => console.log("User disconnected."));
+});
+
+server.listen(process.env.PORT || 3000, () => {
+    console.log("Relay Bridge Running...");
+});
