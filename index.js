@@ -1,5 +1,5 @@
 const WebSocket = require('ws');
-const http = require('http');
+const http = require('http');a
 
 // Create a simple server for Render health checks
 const server = http.createServer((req, res) => {
