@@ -1,11 +1,8 @@
 {
-  "name": "bridgeserver2-backup",
+  "name": "xeno-bridge",
   "version": "1.0.0",
   "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
   "dependencies": {
-    "ws": "^8.18.0"
+    "ws": "^8.0.0"
   }
 }
