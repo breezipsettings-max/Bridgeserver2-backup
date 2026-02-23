@@ -1,29 +1,31 @@
 const WebSocket = require('ws');
 const http = require('http');
+const express = require('express');
 
-// Create a simple server for Render health checks
-const server = http.createServer((req, res) => {
-    res.writeHead(200);
-    res.end("Bridge is Active");
-});
+const app = express();
+const PORT = process.env.PORT || 8080;
 
+app.get('/', (req, res) => res.send('Bridge Online'));
+
+const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 wss.on('connection', (ws) => {
-    console.log("A user connected to the Sync Bridge.");
-
-    ws.on('message', (message) => {
-        // Broadcast logic: Sends message to EVERYONE except the sender
+    ws.room = 'EN'; 
+    ws.on('message', (data) => {
+        const msg = data.toString();
+        if (msg.startsWith("JOIN:")) {
+            const newRoom = msg.split(":")[1];
+            ws.room = newRoom;
+            console.log(`User moved to channel: ${newRoom}`);
+            return;
+        }
         wss.clients.forEach((client) => {
-            if (client !== ws && client.readyState === WebSocket.OPEN) {
-                client.send(message.toString());
+            if (client.readyState === WebSocket.OPEN && client.room === ws.room) {
+                client.send(msg);
             }
         });
     });
-
-    ws.on('close', () => console.log("User disconnected."));
 });
 
-server.listen(process.env.PORT || 3000, () => {
-    console.log("Relay Bridge Running...");
-});
+server.listen(PORT, () => console.log(`Bridge running on ${PORT}`));
